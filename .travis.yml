@@ -22,7 +22,7 @@ branches:
   - /feature\/.*/
 
 before_install:
-  - chmod +x ./travis/*.sh 
+  # - chmod +x ./travis/*.sh 
   - pip install awscli --upgrade --user
   - pip install awsebcli --upgrade --user
   - export PATH=$PATH:$HOME/.local/bin
