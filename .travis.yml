@@ -1,0 +1,51 @@
+sudo: required
+
+language: node_js
+services:
+  - docker
+
+node_js:
+  - "node"
+
+env:
+  global:
+    - SLS_DEBUG=true
+
+cache:
+  yarn: true
+  directories:
+    - "node_modules"
+
+# blocklist
+branches:
+  except:
+  - /feature\/.*/
+
+before_install:
+  - chmod +x ./travis/*.sh 
+  - pip install awscli --upgrade --user
+  - pip install awsebcli --upgrade --user
+  - export PATH=$PATH:$HOME/.local/bin
+
+install:
+  - yarn install
+
+script:
+  - yarn run build
+    # Deploy to ECR
+  - docker --version  # document the version travis is using
+  - export PATH=$PATH:$HOME/.local/bin # put aws in the path
+  - eval $(aws ecr get-login --region ${AWS_REGION}) #needs AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY envvars
+  - docker build -t ${PROJECT_NAME} .
+  - docker tag ${PROJECT_NAME}:latest ${AWS_ECR_REPO_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}:latest
+  - docker push ${AWS_ECR_REPO_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}:latest
+
+after_success:
+  # init the elastic beanstalk environment
+  - eb init ${PROJECT_NAME} -r ${AWS_REGION} -p "${AWS_PLATFORM}" #e.g.  eb init react-server-demo -r ap-northeast-1 -p "64bit Amazon Linux 2017.03 v2.7.5 running Multi-container Docker 17.03.2-ce (Generic)"  --instance-type t2.micro
+  # create environment if needed.
+  - export createScript=`eb create ${PROJECT_NAME} -c ${PROJECT_NAME} --elb-type application`
+  - if [[ $(eb list) != *"${PROJECT_NAME}"* ]]; then echo $createScript; else echo "The environment is already created"; fi
+  # deploy the application to environment
+  - eb setenv NODE_ENV=staging
+  - eb deploy ${AWS_ENVIRONMENT_NAME}

@@ -1,0 +1,48 @@
+# This is a sample build configuration for JavaScript.
+# Check our guides at https://confluence.atlassian.com/x/14UWN for more examples.
+# Only use spaces to indent your .yml configuration.
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+image: node:7.5.0
+
+options:
+  docker: true
+
+pipelines:
+  default:
+    - step:
+        # caches:
+        #   - node
+        script: # Modify the commands below to build your repository.
+          # install yarn
+          - curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 0.18.1
+          - export PATH=$HOME/.yarn/bin:$PATH
+          - yarn
+
+          # test the package
+          - yarn install
+          - yarn test
+
+          # install awscli tools
+          - apt-get update && apt-get install -y python-dev
+          - curl -O https://bootstrap.pypa.io/get-pip.py
+          - python get-pip.py
+          - pip install awscli --upgrade
+          - pip install awsebcli --upgrade
+
+          # Deploy to ECR
+          - docker --version  # document the version travis is using
+          - export PATH=$PATH:$HOME/.local/bin # put aws in the path
+          - eval $(aws ecr get-login --region ${AWS_REGION}) #needs AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY envvars
+          - docker build -t ${PROJECT_NAME} .
+          - docker tag ${PROJECT_NAME}:latest ${AWS_ECR_REPO_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}:latest
+          - docker push ${AWS_ECR_REPO_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}:latest
+
+          # init the elastic beanstalk environment
+          - eb init ${PROJECT_NAME} -r ${AWS_REGION} -p "${AWS_PLATFORM}" #e.g.  eb init react-server-demo -r ap-northeast-1 -p "64bit Amazon Linux 2017.03 v2.7.5 running Multi-container Docker 17.03.2-ce (Generic)"  --instance-type t2.micro
+          # create environment if needed.
+          - export createScript=`eb create ${PROJECT_NAME} -c ${PROJECT_NAME} --elb-type application`
+          - if [[ $(eb list) != *"${PROJECT_NAME}"* ]]; then echo $createScript; else echo "The environment is already created"; fi
+          # deploy the application to environment
+          - eb setenv NODE_ENV=staging
+          - eb deploy ${AWS_ENVIRONMENT_NAME}
