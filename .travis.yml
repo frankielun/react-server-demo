@@ -31,8 +31,9 @@ install:
   - yarn install
 
 script:
-  - yarn run build
-    # Deploy to ECR
+  - yarn lint
+  - yarn test
+  # Deploy to ECR
   - docker --version  # document the version travis is using
   - export PATH=$PATH:$HOME/.local/bin # put aws in the path
   - eval $(aws ecr get-login --region ${AWS_REGION}) #needs AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY envvars
