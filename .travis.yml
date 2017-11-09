@@ -45,11 +45,10 @@ script:
   - docker push ${AWS_ECR_REPO_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}:latest
 
   # init the elastic beanstalk environment
-  - eb init "${PROJECT_NAME}" -r "${AWS_REGION}" -p "${AWS_PLATFORM}" #e.g.  eb init react-server-demo -r ap-northeast-1 -p "64bit Amazon Linux 2017.03 v2.7.5 running Multi-container Docker 17.03.2-ce (Generic)"  --instance-type t2.micro
+  - eb init ${PROJECT_NAME} -r ${AWS_REGION} -p "64bit Amazon Linux 2017.03 v2.7.5 running Multi-container Docker 17.03.2-ce (Generic)" #e.g.  eb init react-server-demo -r ap-northeast-1 -p "64bit Amazon Linux 2017.03 v2.7.5 running Multi-container Docker 17.03.2-ce (Generic)"  --instance-type t2.micro
   #- eb init react-server-demo -r ap-northeast-1 -p "64bit Amazon Linux 2017.03 v2.7.5 running Multi-container Docker 17.03.2-ce (Generic)"
   # create environment if needed.
-  - export createScript=`eb create ${PROJECT_NAME} -c ${PROJECT_NAME} --elb-type application`
-  - if [[ $(eb list) != *"${PROJECT_NAME}"* ]]; then echo $createScript; else echo "The environment is already created"; fi
+  - export createScript=`eb create ${PROJECT_NAME}-${TRAVIS_BRANCH} -c ${PROJECT_NAME}-${TRAVIS_BRANCH} --elb-type application`
+  - if [[ $(eb list) != *"${PROJECT_NAME}-${TRAVIS_BRANCH}"* ]]; then echo $createScript; else echo "The environment is already created"; fi
   # deploy the application to environment
-  - eb setenv NODE_ENV=staging
-  - eb deploy ${AWS_ENVIRONMENT_NAME}
+  - eb deploy ${PROJECT_NAME}-${TRAVIS_BRANCH}
