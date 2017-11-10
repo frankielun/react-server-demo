@@ -14,7 +14,7 @@ VOLUME ["/var/app/current"]
 
 EXPOSE 3000
 
-# CMD npm start
+CMD npm start
 
 # FROM node:slim
 # EXPOSE 3000
